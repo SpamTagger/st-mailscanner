@@ -12,7 +12,6 @@ jobs:
       matrix:
         distro: [ trixie ]
         #distro: [trixie, forky]
-        arch: [amd64, arm64]
 
     steps:
       - name: Checkout
@@ -33,19 +32,18 @@ jobs:
           ./build-and-extract.sh \
             "${{ steps.version.outputs.mailscanner }}" \
             "${{ matrix.distro }}" \
-            "${{ matrix.arch }}" \
             dist
 
       - name: Upload DEB
         uses: actions/upload-artifact@v4
         with:
-          name: debs-${{ matrix.distro }}-${{ matrix.arch }}
+          name: debs-${{ matrix.distro }}
           path: dist/*.deb
 
       - name: Upload SHA256SUM
         uses: actions/upload-artifact@v4
         with:
-          name: debs-${{ matrix.distro }}-${{ matrix.arch }}-sha256
+          name: debs-${{ matrix.distro }}-sha256
           path: dist/*.deb.sha256
 
   release:
@@ -57,6 +55,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+
+      - name: Extract version
+        id: version
+        run: |
+          echo "mailscanner=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
 
       - name: Import GPG key
         run: echo "${{ secrets.DEB_GPG_PRIVATE_KEY }}" | base64 -d | gpg --batch --import
