@@ -32,6 +32,7 @@ RUN git clone https://github.com/MailScanner/v5.git --depth=1 && \
 
 WORKDIR v5
 RUN git apply spamtagger.patch
+RUN sed -iR 's/mtagroup/spamtagger/g' ./
 RUN ./Build.debian
 
 CMD lintian /root/msbuilds/MailScanner-${MAILSCANNER_VERSION}.noarch.deb
