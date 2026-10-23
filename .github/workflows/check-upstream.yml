@@ -1,0 +1,131 @@
+
+name: Check upstream MailScanner release
+
+on:
+  schedule:
+    - cron: "10 1 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-release:
+    name: Check for a new MailScanner release
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Install Git
+        run: sudo apt-get update && sudo apt-get install -y git
+
+      - name: Find latest upstream stable tag
+        id: upstream
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          upstream=$(git ls-remote --tags --refs --sort='v:refname' \
+            https://github.com/MailScanner/v5.git | \
+            sed -E 's#.*refs/tags/##;' | \
+            grep -E '^([0-9]+\.[0-9]+(\.[0-9]+)?(\-[0-9]+)?)$' | \
+            tail -n 1)
+
+          echo "upstream=$upstream" >> "$GITHUB_OUTPUT"
+          echo "Latest upstream tagged version: $upstream"
+
+      - name: Get latest published GitHub release
+        id: current
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          current=$(git ls-remote --tags --refs --sort='v:refname' \
+            https://github.com/SpamTagger/st-mailscanner.git | \
+            sed -E 's#.*refs/tags/v##;' | \
+            grep -E '^([0-9]+\.[0-9]+(\.[0-9]+)?(\-[0-9]+)?)$' | \
+            tail -n 1)
+
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+          echo "Our current published release: $current"
+
+      - name: Compare versions
+        id: compare
+        env:
+          UPSTREAM: ${{ steps.upstream.outputs.upstream }}
+          CURRENT: ${{ steps.current.outputs.current }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$UPSTREAM" != "$CURRENT" ]]; then
+            echo "update=true" >> "$GITHUB_OUTPUT"
+            echo "A newer upstream release is available."
+          else
+            echo "update=false" >> "$GITHUB_OUTPUT"
+            echo "No newer upstream release."
+          fi
+
+      - name: Check for an existing update Issue
+        id: duplicate
+        if: steps.compare.outputs.update == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.ISSUE_TOKEN }}
+          UPSTREAM: ${{ steps.upstream.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          title="Update st-mailscanner to MailScanner ${UPSTREAM}"
+
+          existing=$(gh issue list \
+            --repo SpamTagger/st-mailscanner \
+            --state open \
+            --limit 100 \
+            --json title \
+            --jq '[.[] | select(.title == env.title)] | length')
+
+          if [[ "$existing" -gt 0 ]]; then
+            echo "create=false" >> "$GITHUB_OUTPUT"
+            echo "An open Issue already exists for $UPSTREAM."
+          else
+            echo "create=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open update Issue
+        if: >-
+          steps.compare.outputs.update == 'true' &&
+          steps.duplicate.outputs.create == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.ISSUE_TOKEN }}
+          UPSTREAM: ${{ steps.upstream.outputs.upstream }}
+          CURRENT: ${{ steps.current.outputs.current }}
+        run: |
+          set -euo pipefail
+
+          gh issue create \
+            --repo SpamTagger/st-mailscanner \
+            --title "Update st-mailscanner to MailScanner ${UPSTREAM}" \
+            --body "$(cat <<EOF
+          A new MailScanner release is available.
+
+          - **Current st-mailscanner release:** ${CURRENT}
+          - **Upstream MailScanner release:** ${UPSTREAM}
+          - **Release Tag** https://github.com/MailScanner/v5/releases/tag/${UPSTREAM}
+          - **Release Notes** https://github.com/MailScanner/v5/blob/master/changelog
+
+          ## Tasks
+
+          - [ ] Review upstream release notes and changes.
+          - [ ] Update debian/EDITME with any new options.
+          - [ ] Update debian/control with any dependency changes.
+          - [ ] Build and test packages for all Debian releases and architectures.
+          - [ ] Push changes.
+          - [ ] Push a new tag with \`git tag v${UPSTREAM}\` and \`git push origin v${UPSTREAM}\`
+
+          This Issue was created automatically by the upstream release checker.
+          EOF
+          )"
+
