@@ -4,8 +4,8 @@ set -euo pipefail
 
 MAILSCANNER_VERSION="${1:-5.5.3-2}"
 DISTRO="${2:-trixie}"
-BUILD_DIR="${4:-$(pwd)/build}"
-EXPORT_DIR="${4:-$(pwd)/dist}"
+BUILD_DIR="${3:-$(pwd)/build}"
+EXPORT_DIR="${3:-$(pwd)/dist}"
 FINAL_DEB="st-mailscanner_${MAILSCANNER_VERSION}+${DISTRO}_all.deb"
 IMAGE="st-mailscanner:${MAILSCANNER_VERSION}-${DISTRO}"
 CPUS="$(nproc)"
@@ -24,6 +24,7 @@ fi
 podman build \
   --build-arg MAILSCANNER_VERSION=$MAILSCANNER_VERSION \
   --build-arg DISTRO=$DISTRO \
+  --build-arg ARCH=amd64 \
   --build-arg CPUS=$CPUS \
   --output type=local,dest="${BUILD_DIR}" \
   -t "$IMAGE" .
