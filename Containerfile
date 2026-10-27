@@ -1,5 +1,5 @@
 ARG DISTRO=trixie
-FROM debian:${DISTRO}
+FROM debian:${DISTRO}-slim
 
 ARG MAILSCANNER_VERSION
 ARG ARCH
@@ -11,6 +11,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get --assume-yes install \
     build-essential \
     ca-certificates \
     git \
+    lintian \
     pkg-config && \
   rm -rf /var/lib/apt/lists/*
 
