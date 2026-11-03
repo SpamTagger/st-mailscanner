@@ -119,11 +119,12 @@ jobs:
           ## Tasks
 
           - [ ] Review upstream release notes and changes.
-          - [ ] Update debian/EDITME with any new options.
+          - [ ] Rebase [\`MailScanner-v5\`](/SpamTagger/MailScanner-v5) off of upstream.
           - [ ] Update debian/control with any dependency changes.
           - [ ] Build and test packages for all Debian releases and architectures.
           - [ ] Push changes.
-          - [ ] Push a new tag with \`git tag v${UPSTREAM}\` and \`git push origin v${UPSTREAM}\`
+          - [ ] Push a new tag \`git tag v${UPSTREAM}\` and \`git push origin v${UPSTREAM}\`
+          - [ ] Update \`spamtagger\` package for each necessary release
 
           This Issue was created automatically by the upstream release checker.
           EOF

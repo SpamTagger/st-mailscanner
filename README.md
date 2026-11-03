@@ -16,7 +16,7 @@ To build the package on your own, you can execute the build script which will bu
 ./build_and_extract.sh 5.3.3-2
 ```
 
-`5.3.3-2` represents the Exim version you would like to build, as provided by the `5.3.3-2` tag from the [official repository](https://code.exim.org/exim/exim). You can optionally provide the distribution codename as the second argument, and an alternate export destination directory as the third. By default, it will use:
+`5.3.3-2` represents the Exim version you would like to build, as provided by the `5.3.3-2` tag from the [official repository](https://github.com/MailScanner/v5). You can optionally provide the distribution codename as the second argument, and an alternate export destination directory as the third. By default, it will use:
 
 ```
 ./build-and-export.sh 5.3.3-2 trixie ./dist
@@ -32,9 +32,11 @@ The `Containerfile` serves as documentation for the step-by-step building of the
 
 There are several significant patches which need to be applied to MailScanner to provide our expected functionality. This repository hosts only the patches and applies them to the matching MailScanner tag. When MailScanner creates new releases, we need to ensure that the patches still function appropriately. The [MailScanner-v5](https://github.com/SpamTagger/MailScanner-v5) repo exists to rebase and generate diffs from upstream to be replicated here.
 
-It is best practice to increment the default version number within `Dockerfile` and this document with each release, however, this is not strictly necessary so long as we correctly tag the new version.
-
 Note: To maintain compatibility with `st-exim` we will still use a `v` prefix for our release tags, however MailScanner does not include this prefix, unlike Exim.
 Also Note: MailScanner is a pure Perl project and so the package is not architecture specific. The only architecture target is 'all'.
 
-TODO: There is not currently a supported option to create a patched version of the same release (ie. `5.3.3-2+patch1`). An accomadation for this would need to be made within the `build-and-extract.sh` script to appropriately strip the `+patch1` suffix when pulling the MailScanner tag, but leave it on when building the package. Since we generally rely on upstream to fix bugs, it is much more likely that we would just release `5.3.3-2` if/when it becomes available rather than to create a patched version ourselves. Also, since we distribute updates via SpamTagger-Bootc, and the `debs` repo will correctly serve the latest release files when new VM images are being built, this is of little relevance. The consequence is that users will still install a patched version, but it will simply have the same named version as the un-patched version.
+The [`debs`](/SpamTagger/debs) repository gets triggered to rebuild the APT repository every time that a new package is built. In GitHub actions, any existing package revisions for this version will be discovered and the next available suffix will autoatically be added. This is a hack around only being able to have one release for each Git Tag. It allows us to delete the release and tag, then push a new tag for the same version to rebuild and get a new package version. The old package version remains in the APT repo but will no longer be available in Releases.
+
+Specific version dependencies are defined in the `DEBIAN/control` file for the [`spamtagger`](/SpamTagger/SpamTagger) package to ensure that versions remain compatible. We then build [bootc images](/SpamTagger/SpamTagger-Bootc) which define a specific version of that package in order to produce `current` and `stable` images.
+
+TODO: There is not currently a supported option to create a patched version of the same release. Unlike `st-exim` where we can apply our own package version suffix, MailScanner already does this, so if we need to provide a patched version of the same upstream version, we would need to use the `5.3.3-2+patch1` format.
